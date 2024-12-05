@@ -1,0 +1,34 @@
+{
+    "name": "淘工厂客服工具",
+    "description": "给所有淘工厂页面添加一个共同的消息提示框",
+    "version": "0.1",
+    "author": "mrkann",
+    "manifest_version": 3,
+    "background": {
+      "service_worker": "background.js",
+      "type": "module"
+    },
+    "permissions": [
+        "storage", 
+        "tabs"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "image/span16.png",
+            "32": "image/span32.png",
+            "48": "image/span48.png",
+            "128": "image/span128.png"
+        }
+    },
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": true
+    },
+    "icons": {
+        "16": "image/span16.png",
+        "32": "image/span32.png",
+        "48": "image/span48.png",
+        "128": "image/span128.png"
+    }
+  }
