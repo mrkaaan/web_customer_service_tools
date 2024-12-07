@@ -1,0 +1,59 @@
+<!-- test.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Interface</title>
+  <style>
+    .message-item {
+      padding: 5px;
+      margin-bottom: 5px;
+      border: 1px solid #ccc;
+      display: flex;
+      justify-content: space-between;
+    }
+    .unread-dot {
+      width: 8px;
+      height: 8px;
+      background-color: red;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test Messages</h1>
+  <button id="add-message">Add New Message</button>
+  <button id="clear-dots">Clear All Dots</button>
+  <button id="clear-messages">Clear All Messages</button>
+  <div id="messages"></div>
+
+  <script>
+    const messagesDiv = document.getElementById('messages');
+    let messageId = 0;
+
+    function addMessage() {
+      const messageElement = document.createElement('div');
+      messageElement.className = 'message-item';
+      messageElement.innerHTML = `
+        Message ${++messageId} <span class="unread-dot"></span>
+      `;
+      messageElement.onclick = () => {
+        const dot = messageElement.querySelector('.unread-dot');
+        if (dot) dot.remove();
+      };
+      messagesDiv.appendChild(messageElement);
+    }
+
+    document.getElementById('add-message').onclick = addMessage;
+    document.getElementById('clear-dots').onclick = () => {
+      document.querySelectorAll('.unread-dot').forEach(dot => dot.remove());
+    };
+    document.getElementById('clear-messages').onclick = () => {
+      messagesDiv.innerHTML = '';
+      messageId = 0;
+    };
+
+    // 初始添加一些消息用于测试
+    for (let i = 0; i < 5; i++) addMessage();
+  </script>
+</body>
+</html>

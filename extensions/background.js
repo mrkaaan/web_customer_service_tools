@@ -1,25 +1,58 @@
-const color = "#3aa757";
+let ws;
 
-chrome.runtime.onInstalled.addListener(() => {
-    console.log("插件已被安装");
-    console.log(`[Coloring] default background color is set to: ${color}`);
-    // chrome.action.setBadgeText({text: 'ON'}); // 配置文本
-    // chrome.action.setBadgeBackgroundColor({color: '#4688F1'}); // 配置背景颜色
-});
+// 创建和维护与WebSocket服务器的连接
+function connectWebSocket() {
+  const url = 'ws://localhost:8080'; // WebSocket服务器地址
+  ws = new WebSocket(url); // 创建一个新的WebSocket连接
 
-chrome.action.onClicked.addListener((tab) => {
-    console.log("Browser action clicked!");
-    if (tab && tab.id !== undefined) {
-        console.log("Valid tab object received:", tab);
-        chrome.action.setTitle({ tabId: tab.id, title: "You are on tab:" + tab.id });
-    } else {
-        console.log("No valid tab associated with this click event.");
-        chrome.action.setTitle({ title: "Default Title" }); // 设置全局标题
+  // 监听WebSocket连接打开事件
+  ws.onopen = () => {
+    console.log('Connected to WebSocket server');
+  };
+
+  // 监听WebSocket消息接收事件 当从服务器接收到消息时触发
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data); // 解析服务器发来的JSON数据(消息假定为JSON格式)
+    if (data.type === 'update') {
+        // 生成通知
+      chrome.notifications.create('', {
+        type: 'basic',
+        iconUrl: 'icons/icon48.png', // 通知图标路径
+        title: 'New Message',
+        message: data.message
+      });
+      // 发送消息到内容脚本content.js 目的：消息共享、页面更新、解耦提高独立性、便于维护
+      chrome.runtime.sendMessage({type: 'newMessage', message: data.message});
     }
-});
+  };
 
-// chrome.omnibox.onInputEntered.addListener((text) => {
-//     // Encode user input for special characters , / ? : @ & = + $ #
-//     const newURL = 'https://cn.bing.com/search?q=' + encodeURIComponent(text);
-//     chrome.tabs.create({ url: newURL });
-// });
+  // 监听WebSocket连接关闭事件
+  ws.onclose = () => {
+    console.log('Disconnected from WebSocket server, retrying...');
+    setTimeout(connectWebSocket, 5000); // 尝试重新连接
+  };
+
+  ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
+}
+
+connectWebSocket();
+
+// 监听来自content.js的消息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // 如果消息类型为register则向服务器注册用户
+  if (request.type === 'register') {
+    ws.send(JSON.stringify({
+      type: 'register',
+      id: request.id
+    }));
+  } else if (request.type === 'newMessage') {
+    // 如果消息类型为newMessage则向服务器发送消息
+    ws.send(JSON.stringify({
+      type: 'newMessage',
+      from: request.from,
+      message: request.message
+    }));
+  }
+});

@@ -1,17 +1,25 @@
 {
-    "name": "淘工厂客服工具",
+    "name": "Multi-Browser Sync Tool",
     "description": "给所有淘工厂页面添加一个共同的消息提示框",
-    "version": "0.1",
+    "version": "1.0",
     "author": "mrkann",
     "manifest_version": 3,
+    "permissions": [
+        "activeTab",
+        "storage",
+        "notifications",
+        "background"
+    ],
     "background": {
       "service_worker": "background.js",
       "type": "module"
     },
-    "permissions": [
-        "storage", 
-        "tabs"
-    ],
+    "content_scripts": [
+        {
+          "matches": ["https://c2mbc.service.xixikf.cn/im-desk/*", "http://localhost/*", "file:///*"],
+          "js": ["content.js"]
+        }
+      ],
     "action": {
         "default_popup": "popup.html",
         "default_icon": {
@@ -20,10 +28,6 @@
             "48": "image/span48.png",
             "128": "image/span128.png"
         }
-    },
-    "options_ui": {
-        "page": "options.html",
-        "open_in_tab": true
     },
     "icons": {
         "16": "image/span16.png",

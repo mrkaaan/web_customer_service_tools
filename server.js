@@ -1,28 +1,53 @@
-const express = require('express');
-const app = express();
-const port = 3000;
+const WebSocket = require('ws');
 
-// 存储检测到的元素信息
-let detectedElements = {};
+// 创建WebSocket服务器实例
+const wss = new WebSocket.Server({ port: 8080 });
 
-// 使Express能够解析JSON请求体
-app.use(express.json());
+// 存储每个客户端的标识符和WebSocket连接
+const clients = new Map();
 
-// 接收来自内容脚本的检测消息
-app.post('/detect', (req, res) => {
-  const { tabId, elementInfo } = req.body;
-  if (!detectedElements[tabId]) {
-    detectedElements[tabId] = [];
-  }
-  detectedElements[tabId].push(elementInfo);
-  res.send('Received');
+// 当有新的客户端连接时触发
+wss.on('connection', (ws) => {
+    console.log('New client connected');
+
+    // 监听从客户端发送的消息
+    ws.on('message', (message) => {
+        const data = JSON.parse(message);
+
+        if (data.type === 'register') {
+            // 注册新用户
+            clients.set(data.id, ws);
+            console.log(`Client ${data.id} registered`);
+        } else if (data.type === 'newMessage') {
+            // 广播新消息给所有已注册的客户端
+            broadcastMessage(data);
+        }
+    });
+
+    // 当客户端断开连接时触发
+    ws.on('close', () => {
+        console.log('A client disconnected');
+        // 移除断开连接的客户端
+        for (let [id, client] of clients) {
+            if (client === ws) {
+                clients.delete(id);
+                break;
+            }
+        }
+    });
 });
 
-// 提供检测到的元素信息
-app.get('/elements', (req, res) => {
-  res.json(detectedElements);
-});
+// 向所有已注册的客户端广播消息
+function broadcastMessage(data) {
+    for (let [id, client] of clients) {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+                type: 'update',
+                message: data.message,
+                from: data.from
+            }));
+        }
+    }
+}
 
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
-});
+console.log('WebSocket server is running on ws://localhost:8080');
