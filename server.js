@@ -13,6 +13,7 @@ wss.on('connection', (ws) => {
     // 监听从客户端发送的消息
     ws.on('message', (message) => {
         const data = JSON.parse(message);
+        console.log(`Received message from`);
 
         if (data.type === 'register') {
             // 注册新用户
