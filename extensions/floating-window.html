@@ -31,9 +31,22 @@
     .message-item:hover {
       background-color: #f0f0f0;
     }
+    .flash {
+      animation: flash 1s infinite;
+    }
+
+    @keyframes flash {
+      0% { background-color: #fffaf0; } /* 淡黄色 */
+      50% { background-color: transparent; }
+      100% { background-color: #fffaf0; }
+    }
   </style>
 </head>
 <body>
+  <div id="info">
+    <p>Current Window ID: <span id="currentWindowId"></span></p>
+    <p>Current Tab ID: <span id="currentTabId"></span></p>
+  </div>
   <div id="messages"></div>
   <script src="floating-window.js"></script>
 </body>

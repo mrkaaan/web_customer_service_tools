@@ -24,3 +24,22 @@ if (messageContainer) {
 // 向扩展的后台脚本发送一个注册消息。这个注册消息包含了一个随机生成的id，用于标识当前的浏览器实例或标签页
 // 生成一个随机字符串作为id。Math.random()生成一个0到1之间的随机数，toString(36)将其转换为一个36进制的字符串（包含数字和字母a-z），substr(2, 9)从字符串的第三个字符开始截取9个字符，以确保id的长度适中且随机
 chrome.runtime.sendMessage({type: 'register', id: Math.random().toString(36).substr(2, 9)});
+
+// content.js
+let redDotObserver;
+
+function observeRedDotElement() {
+  const redDotElement = document.querySelector('.unread-dot'); // 替换为实际的红点元素选择器
+  if (redDotElement) {
+    redDotObserver = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        if (!document.querySelector('.unread-dot')) {
+          chrome.runtime.sendMessage({type: 'redDotRemoved'});
+        }
+      });
+    });
+    redDotObserver.observe(redDotElement, { childList: true, subtree: true });
+  }
+}
+
+observeRedDotElement();

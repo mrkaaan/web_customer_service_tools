@@ -52,6 +52,16 @@
       messageId = 0;
     };
 
+    function updateTitleFromUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      if (id) {
+        document.title = `Test Page - ${id}`;
+      }
+    }
+
+    window.onload = updateTitleFromUrlParams;
+
     // 初始添加一些消息用于测试
     for (let i = 0; i < 5; i++) addMessage();
   </script>

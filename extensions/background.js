@@ -1,7 +1,7 @@
 let ws;
 let floatingWindow;
 
-function    () {
+function createFloatingWindow() {
   if (!floatingWindow) {
     chrome.windows.create({
       url: chrome.runtime.getURL('floating-window.html'),
@@ -85,5 +85,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
   } else {
     console.warn('WebSocket is not ready or not connected.');
+  }
+});
+
+// 监听扩展安装事件
+chrome.runtime.onInstalled.addListener(() => {
+  // 检查所有匹配的标签页是否存在红点元素
+  const urls = [
+    "https://c2mbc.service.xixikf.cn/im-desk/*",
+    "http://localhost/*",
+    "http://localhost:5500/*",
+    "http://127.0.0.1/*",
+    "http://127.0.0.1:5500/*",
+    "file:///*"
+  ];
+
+  urls.forEach(urlPattern => {
+    chrome.tabs.query({url: urlPattern}, (tabs) => {
+      tabs.forEach(tab => {
+        chrome.scripting.executeScript({
+          target: {tabId: tab.id},
+          func: checkRedDotElement
+        }, (results) => {
+          if (results && results[0].result) {
+            createFloatingWindow();
+            chrome.runtime.sendMessage({type: 'newMessage', message: data.message, content: data.content});
+          }
+        });
+      });
+    });
+  });
+
+  function checkRedDotElement() {
+    return !!document.querySelector('.unread-dot'); // 替换为实际的红点元素选择器
   }
 });
