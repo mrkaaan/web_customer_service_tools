@@ -45,7 +45,10 @@ function broadcastMessage(data) {
             client.send(JSON.stringify({
                 type: 'update',
                 message: data.message,
-                from: data.from
+                username: data.username, 
+                dotExists: data.dotExists,
+                tabId: data.tabId,
+                windowId: data.windowId
             }));
         }
     }

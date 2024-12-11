@@ -1,19 +1,6 @@
 let ws;
 let floatingWindow;
 
-function createFloatingWindow() {
-  if (!floatingWindow) {
-    chrome.windows.create({
-      url: chrome.runtime.getURL('floating-window.html'),
-      type: 'popup',
-      width: 320,
-      height: 420
-    }, (window) => {
-      floatingWindow = window;
-    });
-  }
-}
-
 // 创建和维护与WebSocket服务器的连接
 function connectWebSocket() {
   const url = 'ws://localhost:8080'; // WebSocket服务器地址
@@ -23,36 +10,34 @@ function connectWebSocket() {
   ws.onopen = () => {
     console.log('Connected to WebSocket server');
     
-    // 设置消息接收监听器
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data); // 解析服务器发来的JSON数据(消息假定为JSON格式)
-      if (data.type === 'update') {
-        // 创建悬浮窗（如果还没有）
-        createFloatingWindow();
-        
-        // 发送消息到悬浮窗
-        chrome.runtime.sendMessage({type: 'newMessage', message: data.message});
+  };
 
-        // 查询所有匹配的标签页并发送消息
-        const urls = [
-          "https://c2mbc.service.xixikf.cn/im-desk/*",
-          "http://localhost/*",
-          "http://localhost:5500/*",
-          "http://127.0.0.1/*",
-          "http://127.0.0.1:5500/*",
-          "file:///*"
-        ];
+  // 设置来自WebSocket服务器的消息接收监听器
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data); // 解析服务器发来的JSON数据(消息假定为JSON格式)
+    if (data.type === 'update') {
+      // 创建悬浮窗（如果还没有）
+      createFloatingWindow();
+      
+      // 发送完整的消息到悬浮窗
+      chrome.runtime.sendMessage({
+        type: 'floatingWindowUpdate',
+        username: data.username,
+        message: data.message,
+        dotExists: data.dotExists,
+        tabId: data.tabId,
+        windowId: data.windowId
+      });
 
-        // 对每个URL模式进行查询，并将消息发送到所有匹配的标签页
-        urls.forEach(urlPattern => {
-          chrome.tabs.query({url: urlPattern}, (tabs) => {
-            tabs.forEach(tab => {
-              chrome.tabs.sendMessage(tab.id, {type: 'newMessage', message: data.message});
-            });
-          });
-        });
-      }
-    };
+      // 对每个URL模式进行查询，并将消息发送到所有匹配的标签页
+      // getUrls().forEach(urlPattern => {
+      //   chrome.tabs.query({url: urlPattern}, (tabs) => {
+      //     tabs.forEach(tab => {
+      //       chrome.tabs.sendMessage(tab.id, {type: 'newMessage', message: data.message});
+      //     });
+      //   });
+      // });
+    }
   };
 
   // 监听WebSocket连接关闭事件
@@ -68,55 +53,126 @@ function connectWebSocket() {
 
 connectWebSocket();
 
-// 监听来自content.js的消息
+
+// 监听消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    if (request.type === 'register') {
-      ws.send(JSON.stringify({
-        type: 'register',
-        id: request.id
-      }));
-    } else if (request.type === 'newMessage') {
-      ws.send(JSON.stringify({
-        type: 'newMessage',
-        from: request.from,
-        message: request.message
-      }));
+    switch (request.type) {
+      case 'register':
+        ws.send(JSON.stringify({
+          type: 'register',
+          id: request.id
+        }));
+        break;
+      
+      case 'newMessage':
+        if (request.data && request.data.username && request.data.message) {
+          ws.send(JSON.stringify({
+            type: 'newMessage',
+            username: request.data.username,
+            message: request.data.message,
+            dotExists: request.data.dotExists,
+            tabId: request.data.tabId,
+            windowId: request.data.windowId
+          }));
+        } else {
+          console.warn('Invalid newMessage request:', request);
+        }
+        break;
+
+      case 'redDotRemoved':
+        if (request.data && request.data.username && request.data.message) {
+          ws.send(JSON.stringify({
+            type: 'redDotRemoved',
+            username: request.data.username,
+            message: request.data.message
+          }));
+        } else {
+          console.warn('Invalid redDotRemoved request:', request);
+        }
+        break;
+      
+      // 仅处理来自悬浮 窗的消息
+      case 'floatingWindowCreated':
+        if (sender.tab) {
+          chrome.runtime.sendMessage({
+            type: 'floatingWindowCreated',
+            message: request.message,
+            content: request.content
+          });
+      }
+
+      default:
+        console.warn('Unknown message type:', request.type);
     }
   } else {
     console.warn('WebSocket is not ready or not connected.');
   }
+
+  // 可选：回复内容脚本
+  // sendResponse({status: 'received'});
 });
 
-// 监听扩展安装事件
-chrome.runtime.onInstalled.addListener(() => {
-  // 检查所有匹配的标签页是否存在红点元素
-  const urls = [
-    "https://c2mbc.service.xixikf.cn/im-desk/*",
-    "http://localhost/*",
-    "http://localhost:5500/*",
-    "http://127.0.0.1/*",
-    "http://127.0.0.1:5500/*",
-    "file:///*"
-  ];
+// 创建悬浮窗
+function createFloatingWindow() {
+  if (!floatingWindow) {
+    chrome.windows.create({
+      url: chrome.runtime.getURL('floating-window.html'),
+      type: 'popup',
+      width: 320,
+      height: 420
+    }, (window) => {
+      floatingWindow = window;
+      // 确保窗口创建完成后发送消息
+      chrome.runtime.sendMessage({type: 'floatingWindowCreated', message: '悬浮窗已创建'});
+    });
+  }
+}
 
-  urls.forEach(urlPattern => {
+
+// 监听扩展安装事件 脚本安装时判断是否已有红点元素
+chrome.runtime.onInstalled.addListener(() => {
+  getUrls().forEach(urlPattern => {
     chrome.tabs.query({url: urlPattern}, (tabs) => {
       tabs.forEach(tab => {
+        // 使用 chrome.scripting API 注入临时脚本，检查是否有红点元素
         chrome.scripting.executeScript({
           target: {tabId: tab.id},
-          func: checkRedDotElement
+          func: checkAndSendRedDotInfo,
+          args: [tab.id, tab.windowId] // 传递tabId和windowId作为参数
         }, (results) => {
-          if (results && results[0].result) {
-            createFloatingWindow();
-            chrome.runtime.sendMessage({type: 'newMessage', message: data.message, content: data.content});
-          }
         });
       });
     });
   });
 
-  function checkRedDotElement() {
-    return !!document.querySelector('.unread-dot'); // 替换为实际的红点元素选择器
+  function checkAndSendRedDotInfo(tabId, windowId)) {
+    const unreadDots = document.querySelectorAll('.unread-dot');
+    if (unreadDots.length > 0) {
+      unreadDots.forEach(dot => {
+        const parentElement = dot.parentElement;
+        const username = parentElement.querySelector('.username')?.textContent;
+        const messageText = parentElement.querySelector('.message-text')?.textContent;
+  
+        // 将信息发送给后台脚本
+        chrome.runtime.sendMessage({
+          type: 'newMessage',
+          data: {
+            username,
+            message: messageText,
+            dotExists: true,
+            tabId,
+            windowId
+          }
+        });
+      });
+    }
   }
 });
+
+// 从JSON文件中获取URL列表
+function getUrls() {
+  return fetch(chrome.runtime.getURL('urls.json'))
+    .then(response => response.json())
+    .catch(error => console.error('Failed to load URLs:', error));
+}

@@ -11,11 +11,15 @@
       display: flex;
       justify-content: space-between;
     }
+    .username, .message-text {
+      margin-right: 10px;
+    }
     .unread-dot {
       width: 8px;
       height: 8px;
       background-color: red;
       border-radius: 50%;
+      display: inline-block;
     }
   </style>
 </head>
@@ -33,19 +37,36 @@
     function addMessage() {
       const messageElement = document.createElement('div');
       messageElement.className = 'message-item';
+      // 假设用户名和消息文本是动态生成的，这里用静态文本代替
+      const username = `User${Math.floor(Math.random() * 100)}`;
+      const messageText = `Message ${++messageId}`;
+      
       messageElement.innerHTML = `
-        Message ${++messageId} <span class="unread-dot"></span>
+        <span class="username">${username}</span>
+        <span class="message-text">${messageText}</span>
+        <span class="unread-dot"></span>
       `;
       messageElement.onclick = () => {
         const dot = messageElement.querySelector('.unread-dot');
-        if (dot) dot.remove();
+        if (dot) {
+          dot.remove();
+          // 模拟向后台发送移除信息
+          console.log(`Removed unread dot for message: ${messageText} by user: ${username}`);
+        }
       };
       messagesDiv.appendChild(messageElement);
     }
 
     document.getElementById('add-message').onclick = addMessage;
     document.getElementById('clear-dots').onclick = () => {
-      document.querySelectorAll('.unread-dot').forEach(dot => dot.remove());
+      document.querySelectorAll('.unread-dot').forEach(dot => {
+        const parentElement = dot.parentElement;
+        const username = parentElement.querySelector('.username').textContent;
+        const messageText = parentElement.querySelector('.message-text').textContent;
+        dot.remove();
+        // 模拟向后台发送移除信息
+        console.log(`Removed unread dot for message: ${messageText} by user: ${username}`);
+      });
     };
     document.getElementById('clear-messages').onclick = () => {
       messagesDiv.innerHTML = '';
